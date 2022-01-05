@@ -871,10 +871,10 @@ export class BoilerplateCard extends LitElement {
         .center {
           flex-direction: column;
         }
-        .groups, .players, .sidebar, .player__container {
+        .groups, .players, .sidebar, .player_container {
           max-width: 100%;
         }
-        .player__container, .player__body {
+        .player_container, .player_body {
           width: 100%;
           min-width: unset;
         }
