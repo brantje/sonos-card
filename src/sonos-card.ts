@@ -876,6 +876,7 @@ export class BoilerplateCard extends LitElement {
         }
         .player__container, .player__body {
           width: 100%;
+          min-width: unset;
         }
         .sidebar, .groups {
           margin:0 0 0 0;
