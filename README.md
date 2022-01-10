@@ -1,6 +1,8 @@
 # Sonos Card by [@brantje](https://www.github.com/brantje)
 
-A community driven boilerplate of best practices for Home Assistant Lovelace custom cards
+![Preview Image](images/example.png)
+
+Sonos card
 
 [![GitHub Release][releases-shield]][releases]
 [![License][license-shield]](LICENSE.md)
