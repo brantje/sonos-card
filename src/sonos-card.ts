@@ -53,10 +53,6 @@ export class BoilerplateCard extends LitElement {
     return {};
   }
 
-  public static getStubConfiggetStubConfig(): any {
-    return { type: "gauge", entity: "" };
-  }
-
   // TODO Add any properities that should cause your element to re-render here
   // https://lit.dev/docs/components/properties/
   @property({ attribute: false }) public hass!: HomeAssistant;
@@ -143,7 +139,7 @@ export class BoilerplateCard extends LitElement {
         if (stateObj.state == "playing" && this.active == "") {
           this.active = entity;
         }
-      } else if (stateObj.attributes.sonos_group.length > 1) {
+      } else if (stateObj.attributes.sonos_group && stateObj.attributes.sonos_group.length > 1) {
         delete zones[entity];
       } else {
         if (stateObj.state == "playing" && this.active == "") {
@@ -272,17 +268,19 @@ export class BoilerplateCard extends LitElement {
       </div>
     `;
 
-      for (const member in zones[this.active].members) {
-        memberTemplates.push(html`
+      if (this.active) {
+        for (const member in zones[this.active].members) {
+          memberTemplates.push(html`
           <li>
             <div class="member unjoin-member" data-member="${member}">
-              <span>${
-                zones[this.active].members[member]
-              } </span><ha-icon .icon=${"mdi:minus"}></ha-icon></i>
+              <span>${zones[this.active].members[member]
+            } </span><ha-icon .icon=${"mdi:minus"}></ha-icon></i>
             </div>
           </li>
         `);
+        }
       }
+
       for (const key in zones) {
         if (key != this.active) {
           memberTemplates.push(html`
