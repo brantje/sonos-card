@@ -5,6 +5,14 @@ import {
 } from './const';
 import arrayBufferToBase64 from './utils/misc';
 
+
+
+interface Zone {
+    members: Record<string, string>;
+    state: string;
+    roomName: string;
+}
+
 export default class MediaPlayerObject {
     hass: any;
     config: any;
@@ -16,6 +24,8 @@ export default class MediaPlayerObject {
     active: boolean;
     group: any;
     platform: any;
+    zones: Record<string, any> = {};
+    speakerNames: any = {}
 
     constructor(hass, config, entity) {
         this.hass = hass || {};
@@ -26,6 +36,33 @@ export default class MediaPlayerObject {
         this.attr = entity.attributes;
         this.idle = false;
         this.active = this.isActive;
+
+        for (const entity of this.config.entities) {
+            const stateObj = this.hass.states[entity];
+            if (!(entity in this.zones)) {
+                this.zones[entity] = {
+                    members: {},
+                    state: "",
+                    roomName: "",
+                };
+                this.speakerNames[entity] = stateObj.attributes.friendly_name ?? '';
+            }
+
+            this.zones[entity].state = stateObj.state;
+            this.zones[entity].roomName = stateObj.attributes.friendly_name as string;
+            if (stateObj.attributes.sonos_group.length > 1 && stateObj.attributes.sonos_group[0] == entity) {
+                for (const member of stateObj.attributes.sonos_group) {
+                    if (member != entity) {
+                        const state = this.hass.states[member];
+                        if (member) {
+                            this.zones[entity].members[member] = state.attributes.friendly_name ?? '';
+                        }
+                    }
+                }
+            } else if (stateObj.attributes.sonos_group && stateObj.attributes.sonos_group.length > 1) {
+                delete this.zones[entity];
+            }
+        }
     }
 
     get id() {
@@ -308,6 +345,19 @@ export default class MediaPlayerObject {
             Math.max(newPosition, 0), this.mediaDuration || newPosition,
         );
         this.callService(e, 'media_seek', { seek_position: clampedNewPosition });
+    }
+
+    joinPlayer(playerId) {
+        this.hass.callService("sonos", "join", {
+            master: this.entityId,
+            entity_id: playerId,
+        });
+    }
+
+    unjoinPlayer(playerId) {
+        this.hass.callService("sonos", "unjoin", {
+            entity_id: playerId,
+        });
     }
 
     setVolume(e, vol) {
