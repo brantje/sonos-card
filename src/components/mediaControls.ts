@@ -8,6 +8,7 @@ import { ICON, REPEAT_STATE } from '../const';
 class SonosPlayerMediaControls extends LitElement {
     @property({ attribute: false }) progress: any;
     @property({ attribute: false }) player: any;
+    @property({ attribute: false }) showVolume = false;
     config: any;
     break: any;
 
@@ -47,7 +48,7 @@ class SonosPlayerMediaControls extends LitElement {
     ${!hide.controls ? html`
     <div class='flex sonos-media-controls__media' ?flow=${this.config.player.flow || this.break}>
         ${!hide.prev && this.player.supportsPrev ? html`
-        <ha-icon-button @click=${e=> this.player.prev(e)}
+        <ha-icon-button @click=${e => this.player.prev(e)}
             .icon=${ICON.PREV}>
             <ha-icon .icon=${ICON.PREV}></ha-icon>
         </ha-icon-button>` : ''}
@@ -55,7 +56,7 @@ class SonosPlayerMediaControls extends LitElement {
         ${this.renderPlayButtons()}
         ${this.renderJumpForwardButton()}
         ${!hide.next && this.player.supportsNext ? html`
-        <ha-icon-button @click=${e=> this.player.next(e)}
+        <ha-icon-button @click=${e => this.player.next(e)}
             .icon=${ICON.NEXT}>
             <ha-icon .icon=${ICON.NEXT}></ha-icon>
         </ha-icon-button>` : ''}
@@ -67,7 +68,7 @@ class SonosPlayerMediaControls extends LitElement {
     renderShuffleButton() {
         return this.showShuffle ? html`
     <div class='flex sonos-media-controls__shuffle'>
-        <ha-icon-button class='shuffle-button' @click=${e=> this.player.toggleShuffle(e)}
+        <ha-icon-button class='shuffle-button' @click=${e => this.player.toggleShuffle(e)}
             .icon=${ICON.SHUFFLE}
             ?color=${this.player.shuffle}>
             <ha-icon .icon=${ICON.SHUFFLE}></ha-icon>
@@ -82,7 +83,7 @@ class SonosPlayerMediaControls extends LitElement {
         const colored = [REPEAT_STATE.ONE, REPEAT_STATE.ALL].includes(this.player.repeat);
         return html`
     <div class='flex sonos-media-controls__repeat'>
-        <ha-icon-button class='repeat-button' @click=${e=> this.player.toggleRepeat(e)}
+        <ha-icon-button class='repeat-button' @click=${e => this.player.toggleRepeat(e)}
             .icon=${ICON.REPEAT[this.player.repeat]}
             ?color=${colored}>
             <ha-icon .icon=${ICON.REPEAT[this.player.repeat]}></ha-icon>
@@ -99,21 +100,27 @@ class SonosPlayerMediaControls extends LitElement {
 
         const showVolumeLevel = !this.config.player.hide.volume_level;
         return html`
-    <div class=${classMap({
-            '--buttons': this.config.player.volume_stateless, 'sonos-media-controls__volume': true, flex:
-        true, })}>
-        ${volumeControls}
-        ${showVolumeLevel ? this.renderVolLevel() : ''}
-    </div>`;
+        <div class=${classMap({ '--buttons' : this.config.player.volume_stateless, 'sonos-media-controls__volume' : true, flex:
+                true,
+        })}>
+            ${volumeControls}
+            ${this.player.attr.sonos_group.length > 1 ? html`
+            <ha-icon-button @click=${() => this.showVolume = !this.showVolume }>
+                <ha-icon .icon=${ICON.DROPDOWN}></ha-icon>
+            </ha-icon-button>` : ''}
+            ${showVolumeLevel ? this.renderVolLevel() : ''}
+
+        </div> ${this.renderGroupVolume()}`;
     }
 
-    renderVolSlider(muted) {
+    renderVolSlider(muted, member = null) {
+        const vol = member ? this.player.hass.states[member].attributes.volume_level : this.player.vol
         return html`
-    ${this.renderMuteButton(muted)}
-    <ha-slider @change=${this.handleVolumeChange} @click=${e=> e.stopPropagation()}
+    ${this.renderMuteButton(muted, member)}
+    <ha-slider @change=${e => this.handleVolumeChange(e, member)} @click=${e => e.stopPropagation()}
         ?disabled=${muted}
         min=${this.minVol} max=${this.maxVol}
-        value=${this.player.vol * 100}
+        value=${vol * 100}
         step=${this.config.player.volume_step || 1}
         dir=${'ltr'}
         ignore-bar-touch pin>
@@ -121,18 +128,47 @@ class SonosPlayerMediaControls extends LitElement {
     `;
     }
 
-    renderVolButtons(muted) {
+    renderVolButtons(muted, member = null) {
         return html`
-    ${this.renderMuteButton(muted)}
-    <ha-icon-button @click=${e=> this.player.volumeDown(e)}
+    ${this.renderMuteButton(muted, member)}
+    <ha-icon-button @click=${e => this.player.volumeDown(e, member)}
         .icon=${ICON.VOL_DOWN}>
         <ha-icon .icon=${ICON.VOL_DOWN}></ha-icon>
     </ha-icon-button>
-    <ha-icon-button @click=${e=> this.player.volumeUp(e)}
+    <ha-icon-button @click=${e => this.player.volumeUp(e, member)}
         .icon=${ICON.VOL_UP}>
         <ha-icon .icon=${ICON.VOL_UP}></ha-icon>
     </ha-icon-button>
     `;
+    }
+
+    renderGroupVolume() {
+        const volumeTemplate: Array<any> = [];
+        if (this.player.attr.sonos_group.length > 1) {
+            for (const member of this.player.attr.sonos_group) {
+                const memberStateObj = this.player.hass.states[member];
+                if (memberStateObj) {
+                    const volume = 100 * memberStateObj.attributes.volume_level;
+                    const volumeStr = Math.round(volume).toString();
+
+                    const volumeControls = this.config.player.volume_stateless ? this.renderVolButtons(memberStateObj.attributes.is_volume_muted, member) : this.renderVolSlider(memberStateObj.attributes.is_volume_muted, member);
+
+                    volumeTemplate.push(html`
+                        <div class="group_row">
+                            <div class="group_name">${this.player.speakerNames[member]}</div>
+
+                        <div>
+                            ${volumeControls}
+                        </div>
+                        <div>
+                            ${volumeStr}%
+                        </div>
+                        </div>
+                    `)
+                }
+            }
+        }
+        return html`<ha-card class="volume-group ${classMap({ show: this.showVolume }) }">${volumeTemplate}</ha-card>`;
     }
 
     renderVolLevel() {
@@ -141,34 +177,34 @@ class SonosPlayerMediaControls extends LitElement {
     `;
     }
 
-    renderMuteButton(muted) {
+    renderMuteButton(muted, member) {
         if (this.config.player.hide.mute) return;
         switch (this.config.player.replace_mute) {
             case 'play':
             case 'play_pause':
                 return html`
-        <ha-icon-button @click=${e=> this.player.playPause(e)}
+        <ha-icon-button @click=${e => this.player.playPause(e)}
             .icon=${ICON.PLAY[this.player.isPlaying]}>
             <ha-icon .icon=${ICON.PLAY[this.player.isPlaying]}></ha-icon>
         </ha-icon-button>
         `;
             case 'stop':
                 return html`
-        <ha-icon-button @click=${e=> this.player.stop(e)}
+        <ha-icon-button @click=${e => this.player.stop(e)}
             .icon=${ICON.STOP.true}>
             <ha-icon .icon=${ICON.STOP.true}></ha-icon>
         </ha-icon-button>
         `;
             case 'play_stop':
                 return html`
-        <ha-icon-button @click=${e=> this.player.playStop(e)}
+        <ha-icon-button @click=${e => this.player.playStop(e)}
             .icon=${ICON.STOP[this.player.isPlaying]}>
             <ha-icon .icon=${ICON.STOP[this.player.isPlaying]}></ha-icon>
         </ha-icon-button>
         `;
             case 'next':
                 return html`
-        <ha-icon-button @click=${e=> this.player.next(e)}
+        <ha-icon-button @click=${e => this.player.next(e)}
             .icon=${ICON.NEXT}>
             <ha-icon .icon=${ICON.NEXT}></ha-icon>
         </ha-icon-button>
@@ -176,7 +212,7 @@ class SonosPlayerMediaControls extends LitElement {
             default:
                 if (!this.player.supportsMute) return;
                 return html`
-        <ha-icon-button @click=${e=> this.player.toggleMute(e)}
+        <ha-icon-button @click=${e => this.player.toggleMute(e, member)}
             .icon=${ICON.MUTE[muted]}>
             <ha-icon .icon=${ICON.MUTE[muted]}></ha-icon>
         </ha-icon-button>
@@ -188,13 +224,13 @@ class SonosPlayerMediaControls extends LitElement {
         const { hide } = this.config.player;
         return html`
     ${!hide.play_pause ? html`
-    <ha-icon-button @click=${e=> this.player.playPause(e)}
+    <ha-icon-button @click=${e => this.player.playPause(e)}
         .icon=${ICON.PLAY[this.player.isPlaying]}>
         <ha-icon .icon=${ICON.PLAY[this.player.isPlaying]}></ha-icon>
     </ha-icon-button>
     ` : html``}
     ${!hide.play_stop ? html`
-    <ha-icon-button @click=${e=> this.handleStop(e)}
+    <ha-icon-button @click=${e => this.handleStop(e)}
         .icon=${hide.play_pause ? ICON.STOP[this.player.isPlaying] : ICON.STOP.true}>
         <ha-icon .icon=${hide.play_pause ? ICON.STOP[this.player.isPlaying] : ICON.STOP.true}></ha-icon>
     </ha-icon-button>
@@ -206,7 +242,7 @@ class SonosPlayerMediaControls extends LitElement {
         const hidden = this.config.player.hide.jump;
         if (hidden || !this.player.hasProgress) return html``;
         return html`
-    <ha-icon-button @click=${e=> this.player.jump(e, this.jumpAmount)}
+    <ha-icon-button @click=${e => this.player.jump(e, this.jumpAmount)}
         .icon=${ICON.FAST_FORWARD}>
         <ha-icon .icon=${ICON.FAST_FORWARD}></ha-icon>
     </ha-icon-button>
@@ -217,7 +253,7 @@ class SonosPlayerMediaControls extends LitElement {
         const hidden = this.config.player.hide.jump;
         if (hidden || !this.player.hasProgress) return html``;
         return html`
-    <ha-icon-button @click=${e=> this.player.jump(e, -this.jumpAmount)}
+    <ha-icon-button @click=${e => this.player.jump(e, -this.jumpAmount)}
         .icon=${ICON.REWIND}>
         <ha-icon .icon=${ICON.REWIND}></ha-icon>
     </ha-icon-button>
@@ -228,9 +264,9 @@ class SonosPlayerMediaControls extends LitElement {
         return this.config.player.hide.play_pause ? this.player.playStop(e) : this.player.stop(e);
     }
 
-    handleVolumeChange(ev) {
+    handleVolumeChange(ev, member) {
         const vol = parseFloat(ev.target.value) / 100;
-        this.player.setVolume(ev, vol);
+        this.player.setVolume(ev, vol, member);
     }
 
     static get styles() {
@@ -250,6 +286,33 @@ class SonosPlayerMediaControls extends LitElement {
         }
         .label {
             margin: 0 8px;
+        }
+        .volume-group{
+            display: none;
+            position: absolute;
+            min-width: 300px;
+            top: 40px;
+            left: 0;
+            z-index: 5;
+        }
+        .volume-group.show {
+            display: inline-block;
+        }
+        .volume-group .group_row {
+            width: 100%;
+            display: flex;
+            flex-basis: 0px;
+            padding: 10px;
+            align-items: center
+        }
+        .volume-group .group_row div {
+            flex: 1 1 0px
+        }
+        .volume-group .group_row :nth-child(2) {
+            flex: 3 3 0px
+        }
+        .volume-group .group_row input[type=range]{
+            width: 90%;
         }
         ha-icon-button {
             /* width: var(--sonos-unit);

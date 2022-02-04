@@ -243,15 +243,20 @@ export class SonosCard extends LitElement {
     }
   }
 
-  public static async getConfigElement(): Promise<LovelaceCardEditor> {
-    return document.createElement("sonos-card-editor");
-  }
+  // public static async getConfigElement(): Promise<LovelaceCardEditor> {
+  //   return document.createElement("sonos-card-editor");
+  // }
 
   public async setConfig(config: SonosCardConfig): Promise<void> {
     if (!config.entities || config.entities.length < 1) {
       console.error(localize("common.invalid_configuration"));
     }
-    this.setActivePlayer(this.getActivePlayer());
+
+    let a = this.getActivePlayer();
+    if (!a && config) {
+      a = config.entities[0];
+    }
+    this.setActivePlayer(a);
 
     this.config = {
         player: {
@@ -292,6 +297,7 @@ export class SonosCard extends LitElement {
 export class SonosRoomCard extends SonosCard {
   @property({ attribute: false }) masterPlayer: MediaPlayerObject;
   render(): TemplateResult | void {
+    this.checkActivePlayer();
     const activeState = this.hass.states[this.activePlayer];
     this.masterPlayer = new MediaPlayerObject(this.hass, this.config, activeState);
 
@@ -341,6 +347,12 @@ export class SonosRoomCard extends SonosCard {
         });
       }
     });
+  }
+  checkActivePlayer() {
+    this.activePlayer = this.getActivePlayer();
+    setTimeout(() => {
+      this.checkActivePlayer()
+    }, 250);
   }
 
   static get styles() : CSSResultGroup {
@@ -469,7 +481,7 @@ export class SonosPlayerSelectCard extends SonosCard {
                   return html`<li>${player.speakerNames[speaker]}</li>`;
                })}
           </ul>
-          <div class="current-track">${ player.mediaInfo.map(i => html`<span class=${`attr_${i.attr}`}>${i.prefix + i.text} - </span>`) }</div>
+          <div class="current-track">${ player.mediaInfo.map(i => html`<span class=${`attr_${i.attr}`}>${i.prefix + i.text}</span>`) }</div>
           <div class="player ${
                 p.state == "playing" ? "active" : ""
               }">
@@ -535,6 +547,9 @@ export class SonosPlayerSelectCard extends SonosCard {
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .group .current-track span:not(:first-child)::before{
+        content: " - "
+      }
 
       .group ul.speakers {
         list-style:none;
@@ -545,6 +560,7 @@ export class SonosPlayerSelectCard extends SonosCard {
         display:block;
         margin:5px 0 0 0 ;
         color: var(--primary-text-color);
+        text-align: left;
       }
       .group ul.speakers li:first-child {
         margin:0;
@@ -679,7 +695,7 @@ export class SonosPlayerCard extends SonosCard {
   static get styles(): CSSResultGroup {
     return css`
       .player-body {
-        overflow: hidden;
+        overflow: visible;
         box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.6);
         position: relative;
         width: 100%;
@@ -690,7 +706,7 @@ export class SonosPlayerCard extends SonosCard {
         position: absolute;
         z-index: 1;
         width: 100%;
-        height: 250px;
+        height: 100%;
         background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.4));
         background-position: center bottom;
         background-size: cover;
@@ -743,6 +759,7 @@ export class SonosPlayerCard extends SonosCard {
       sonos-media-controls{
         flex-wrap: wrap;
         color: #fff;
+        position: relative;
       }
       .player-footer{
         position: relative;

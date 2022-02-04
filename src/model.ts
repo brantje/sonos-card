@@ -265,9 +265,14 @@ export default class MediaPlayerObject {
     }
 
 
-    toggleMute(e) {
-        this.callService(e, 'volume_mute', { is_volume_muted: !this.muted });
-        //TODO Group
+    toggleMute(e, member) {
+        if (member == null) {
+            for (const entityId of this.attr.sonos_group) {
+                this.callService(e, 'volume_mute', { is_volume_muted: !this.hass.states[entityId].attributes.is_volume_muted, entity_id: entityId }, 'media_player', true);
+            }
+        } else {
+            this.callService(e, 'volume_mute', { is_volume_muted: !this.hass.states[member].attributes.is_volume_muted, entity_id: member }, 'media_player', true);
+        }
     }
 
     toggleShuffle(e) {
@@ -317,22 +322,34 @@ export default class MediaPlayerObject {
         this.callService(e, 'media_stop');
     }
 
-    volumeUp(e) {
-        if (this.supportsVolumeSet && this.config.volume_step > 0) {
-            this.callService(e, 'volume_set', {
-                entity_id: this.entityId,
-                volume_level: Math.min(this.vol + this.config.volume_step / 100, 1),
-            });
-        } else this.callService(e, 'volume_up');
+    volumeUp(e, member) {
+        if (!member) {
+            for (const entityId of this.attr.sonos_group) {
+                if (this.supportsVolumeSet && this.config.volume_step > 0) {
+                    this.callService(e, 'volume_set', {
+                        entity_id: entityId,
+                        volume_level: Math.min(this.vol + this.config.volume_step / 100, 1),
+                    });
+                } else this.callService(e, 'volume_up', { entity_id: entityId }, 'media_player', true);
+            }
+        } else {
+            this.callService(e, 'volume_up', { entity_id: member }, 'media_player', true);
+        }
     }
 
-    volumeDown(e) {
-        if (this.supportsVolumeSet && this.config.volume_step > 0) {
-            this.callService(e, 'volume_set', {
-                entity_id: this.entityId,
-                volume_level: Math.max(this.vol - this.config.volume_step / 100, 0),
-            });
-        } else this.callService(e, 'volume_down');
+    volumeDown(e, member) {
+        if (!member) {
+            for (const entityId of this.attr.sonos_group) {
+                if (this.supportsVolumeSet && this.config.volume_step > 0) {
+                    this.callService(e, 'volume_set', {
+                        entity_id: entityId,
+                        volume_level: Math.max(this.vol - this.config.volume_step / 100, 0),
+                    });
+                } else this.callService(e, 'volume_down', { entity_id: entityId }, 'media_player', true);
+            }
+        } else {
+            this.callService(e, 'volume_down', { entity_id: member }, 'media_player', true);
+        }
     }
 
     seek(e, pos) {
@@ -360,12 +377,20 @@ export default class MediaPlayerObject {
         });
     }
 
-    setVolume(e, vol) {
-        this.callService(e, 'volume_set', {
-            entity_id: this.entityId,
-            volume_level: vol,
-        });
-        //TODO Group
+    setVolume(e, vol, ent = null) {
+        if (!ent) {
+            for (const entityId of this.attr.sonos_group) {
+                this.callService(e, 'volume_set', {
+                    entity_id: entityId,
+                    volume_level: vol,
+                });
+            }
+        } else {
+            this.callService(e, 'volume_set', {
+                entity_id: ent,
+                volume_level: vol,
+            });
+        }
     }
 
     toggleScript(e, id, data = {}) {
@@ -383,7 +408,10 @@ export default class MediaPlayerObject {
     }
 
     callService(e, service, inOptions = {}, domain = 'media_player', omit = false) {
-        e.stopPropagation();
+        if (e) {
+            e.stopPropagation();
+        }
+
         this.hass.callService(domain, service, {
             ...(!omit && { entity_id: this.entityId }),
             ...inOptions,

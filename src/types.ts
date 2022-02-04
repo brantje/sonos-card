@@ -7,9 +7,16 @@ declare global {
   }
 }
 
+interface RoomConfig {
+  player_entity: string,
+  treble_entity: string,
+  bass_entity: string
+}
+
 // TODO Add your configuration elements here for type-checking
 export interface SonosCardConfig extends LovelaceCardConfig {
   type: string;
   name?: string;
   entities: Array<string>;
+  rooms: Array<RoomConfig>
 }
