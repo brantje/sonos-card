@@ -10,15 +10,9 @@ import {
 import { customElement, property, state } from "lit/decorators";
 import {
   HomeAssistant,
-  hasConfigOrEntityChanged,
-  hasAction,
   ActionHandlerEvent,
-  handleAction,
   LovelaceCardEditor,
-  getLovelace,
 } from "custom-card-helpers"; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
-import arrayBufferToBase64 from "./utils/misc";
-
 import "./editor";
 
 import MediaPlayerObject from './model';
@@ -231,7 +225,7 @@ export class SonosCard extends LitElement {
   @property({ attribute: false }) public activePlayer = '';
   @state() public config!: SonosCardConfig;
   @property({ attribute: false }) public hass!: HomeAssistant;
-
+  public cardHelpers
   public getActivePlayer() : string {
     return localStorage.getItem('sonos-active-player') ?? '';
   }
@@ -282,7 +276,12 @@ export class SonosCard extends LitElement {
 
     };
 
-    //this.cardHelpers = await (window as any).loadCardHelpers();
+    this.cardHelpers = await (window as any).loadCardHelpers();
+    // cardHelpers.createCardElement({type: "gauge"})
+    //hui-entities-card
+    //<hui-gauge-card>​</hui-gauge-card>​
+    //customElements.get("ha-gauge")
+
   }
 
   protected shouldUpdate(): boolean {
@@ -370,6 +369,9 @@ export class SonosRoomCard extends SonosCard {
         justify-content: center;
         position: relative;
       }
+      .member{
+        padding-right: 10px;
+      }
       .member span {
         flex:1;
         align-self:center;
@@ -441,6 +443,9 @@ export class SonosFavoritesCard extends SonosCard {
         box-sizing: border-box;
         justify-content: center;
         position: relative;
+      }
+      .favorite{
+        padding-right: 10px;
       }
       .favorite span {
         flex:1;
