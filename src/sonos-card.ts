@@ -11,6 +11,7 @@ import { customElement, property, state } from "lit/decorators";
 import {
   HomeAssistant,
   ActionHandlerEvent,
+  handleAction,
   LovelaceCardEditor,
 } from "custom-card-helpers"; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
 import "./editor";
@@ -22,7 +23,7 @@ import type { SonosCardConfig } from "./types";
 import { CARD_VERSION } from "./const";
 import { localize } from "./localize/localize";
 
-
+import { actionHandler } from './action-handler-directive';
 import './components/progress';
 import './components/mediaControls';
 /* eslint no-console: 0 */
@@ -85,7 +86,7 @@ export class SonosCard2 extends LitElement {
   @state() private config!: SonosCardConfig;
   @property({ attribute: false }) private active = "";
   @property({ attribute: false }) private thumbnail = "";
-  private cardHelpers;
+  public cardHelpers;
   @property({ attribute: false }) private showVolumeEQ = false;
   // https://lit.dev/docs/components/properties/#accessors-custom
   public async setConfig(config: SonosCardConfig): Promise<void> {
@@ -121,70 +122,6 @@ export class SonosCard2 extends LitElement {
 
     const header = 'header'
     return html``;
-  }
-
-  public pause(entity): void {
-    this.hass.callService("media_player", "media_pause", {
-      entity_id: entity,
-    });
-  }
-
-  public previous(entity): void {
-    this.hass.callService("media_player", "media_previous_track", {
-      entity_id: entity,
-    });
-  }
-
-  public play(entity): void {
-    this.hass.callService("media_player", "media_play", {
-      entity_id: entity,
-    });
-  }
-
-  public next(entity): void {
-    this.hass.callService("media_player", "media_next_track", {
-      entity_id: entity,
-    });
-  }
-
-  public volumeDown(entity, members): void {
-    this.hass.callService("media_player", "volume_down", {
-      entity_id: entity,
-    });
-
-    for (const member in members) {
-      this.hass.callService("media_player", "volume_down", {
-        entity_id: member,
-      });
-    }
-  }
-
-  public volumeUp(entity, members): void {
-    this.hass.callService("media_player", "volume_up", {
-      entity_id: entity,
-    });
-
-    for (const member in members) {
-      this.hass.callService("media_player", "volume_up", {
-        entity_id: member,
-      });
-    }
-  }
-
-  public volumeSet(entity, members, volume): void {
-    const volumeFloat = volume / 100;
-
-    this.hass.callService("media_player", "volume_set", {
-      entity_id: entity,
-      volume_level: volumeFloat,
-    });
-
-    for (const member in members) {
-      this.hass.callService("media_player", "volume_set", {
-        entity_id: member,
-        volume_level: volumeFloat,
-      });
-    }
   }
 
   private _handleAction(ev: ActionHandlerEvent): void {
@@ -225,7 +162,7 @@ export class SonosCard extends LitElement {
   @property({ attribute: false }) public activePlayer = '';
   @state() public config!: SonosCardConfig;
   @property({ attribute: false }) public hass!: HomeAssistant;
-  public cardHelpers
+  public cardHelpers;
   public getActivePlayer() : string {
     return localStorage.getItem('sonos-active-player') ?? '';
   }
@@ -276,8 +213,7 @@ export class SonosCard extends LitElement {
 
     };
 
-    this.cardHelpers = await (window as any).loadCardHelpers();
-    // cardHelpers.createCardElement({type: "gauge"})
+
     //hui-entities-card
     //<hui-gauge-card>​</hui-gauge-card>​
     //customElements.get("ha-gauge")
@@ -625,28 +561,32 @@ export class SonosPlayerSelectCard extends SonosCard {
 export class SonosPlayerCard extends SonosCard {
   @property({ attribute: false }) private player;
   @property({ attribute: false }) private thumbnail;
+  @property({ attribute: false }) private entityCard;
   active: any;
   picture: string;
   prevThumbnail: string;
   @property({ attribute: false }) activePlayer;
-
 
   protected render(): TemplateResult | void {
     const state = this.hass.states[this.activePlayer];
     this.player = new MediaPlayerObject(this.hass, this.config, state);
     this.computeArtwork();
     this.checkActivePlayer();
+    //this.checkEntities();
     return html`
     <ha-card>
       <div class="player-body">
         <div class="cover" style="background-image: ${ this.thumbnail };"></div>
         <nav>
           <div class="right">
-            <ha-icon-button>
+            <ha-icon-button  @click="${this._handleAction}">
               <ha-icon .icon=${"mdi:tune-vertical"}></ha-icon>
             </ha-icon-button>
           </div>
         </nav>
+        <div>
+
+        </div>
         <div class="player-ui">
           ${ this.renderMediaInfo() }
           <div class="controls">
@@ -679,6 +619,14 @@ export class SonosPlayerCard extends SonosCard {
     }, 250);
   }
 
+  async checkEntities() {
+    this.cardHelpers = await (window as any).loadCardHelpers();
+    //const config = { entities: ['number.office_bass', 'number.office_treble', 'switch.sonos_office_touch_controls', 'switch.sonos_office_status_light'] };
+    const entityCard = await this.cardHelpers.createCardElement({ type: "entities", entities: ['number.office_bass', 'number.office_treble', 'switch.sonos_office_touch_controls'] });
+    console.log(entityCard);
+    this.entityCard = entityCard;
+  }
+
   async computeArtwork() {
     const { picture, hasArtwork } = this.player;
     if (hasArtwork && picture !== this.thumbnail) {
@@ -702,6 +650,13 @@ export class SonosPlayerCard extends SonosCard {
       </div>`;
   }
 
+  _handleAction() {
+    if (this.hass && this.config) {
+      handleAction(this, this.hass, {
+        entity: this.activePlayer,
+      }, 'action: more-info');
+    }
+  }
 
   static get styles(): CSSResultGroup {
     return css`
