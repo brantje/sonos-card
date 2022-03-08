@@ -10,7 +10,9 @@ declare global {
 interface RoomConfig {
   player_entity: string,
   treble_entity: string,
-  bass_entity: string
+  bass_entity: string,
+  touch_controls: string,
+  status_light: string
 }
 
 // TODO Add your configuration elements here for type-checking

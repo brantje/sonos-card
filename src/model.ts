@@ -45,22 +45,24 @@ export default class MediaPlayerObject {
                     state: "",
                     roomName: "",
                 };
-                this.speakerNames[entity] = stateObj.attributes.friendly_name ?? '';
+                this.speakerNames[entity] = stateObj ? stateObj.attributes.friendly_name : '';
             }
 
-            this.zones[entity].state = stateObj.state;
-            this.zones[entity].roomName = stateObj.attributes.friendly_name as string;
-            if (stateObj.attributes.sonos_group.length > 1 && stateObj.attributes.sonos_group[0] == entity) {
-                for (const member of stateObj.attributes.sonos_group) {
-                    if (member != entity) {
-                        const state = this.hass.states[member];
-                        if (member) {
-                            this.zones[entity].members[member] = state.attributes.friendly_name ?? '';
+            if (!this.isUnavailable) {
+                this.zones[entity].state = stateObj.state;
+                this.zones[entity].roomName = stateObj.attributes.friendly_name as string;
+                if (stateObj &&  stateObj.attributes.sonos_group && stateObj.attributes.sonos_group.length > 1 && stateObj.attributes.sonos_group[0] == entity) {
+                    for (const member of stateObj.attributes.sonos_group) {
+                        if (member != entity) {
+                            const state = this.hass.states[member];
+                            if (member) {
+                                this.zones[entity].members[member] = state.attributes.friendly_name ?? '';
+                            }
                         }
                     }
+                } else if (stateObj.attributes.sonos_group && stateObj.attributes.sonos_group.length > 1) {
+                    delete this.zones[entity];
                 }
-            } else if (stateObj.attributes.sonos_group && stateObj.attributes.sonos_group.length > 1) {
-                delete this.zones[entity];
             }
         }
     }

@@ -476,15 +476,20 @@ export class SonosPlayerSelectCard extends SonosCard {
     const masterPlayer = new MediaPlayerObject(this.hass, this.config, activeState);
     const templates: Array<TemplateResult> = [];
 
+    const processed: Array<string> = [];
     for (const key in masterPlayer.zones) {
+      if (processed.indexOf(key) > -1) continue;
+
       const p = masterPlayer.zones[key];
       const player = new MediaPlayerObject(this.hass, this.config, this.hass.states[key]);
 
       const card = html`<ha-card data-id="${key}" class="group ${activePLayer == key ? "active" : ""}">
-          <ul class="speakers">
-              ${player.attr.sonos_group.map((speaker) => {
+           <ul class="speakers">
+          ${!player.isUnavailable ? html`${player.attr.sonos_group.map((speaker) => {
+                  processed.push(speaker);
                   return html`<li>${player.speakerNames[speaker]}</li>`;
-               })}
+               })}` : html`<li>${player.name} <div class="unavailable">(unavailable)</div></li>`
+          }
           </ul>
           <div class="current-track">${ player.mediaInfo.map(i => html`<span class=${`attr_${i.attr}`}>${i.prefix + i.text}</span>`) }</div>
           <div class="player ${
@@ -495,6 +500,7 @@ export class SonosPlayerSelectCard extends SonosCard {
                 <div class="bar"></div>
               </div>
         </ha-card>`
+      processed.push(key);
       templates.push(card)
     }
     return html`${ this.config.name ? html`<h2>${this.config.name}</h2>` : '' }${templates}`;
