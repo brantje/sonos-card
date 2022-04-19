@@ -237,7 +237,7 @@ export class SonosRoomCard extends SonosCard {
     this.masterPlayer = new MediaPlayerObject(this.hass, this.config, activeState);
 
     const memberTemplates: Array<TemplateResult> = [];
-    if (this.activePlayer) {
+    if (this.activePlayer && this.masterPlayer.zones[this.activePlayer]) {
       for (const member in this.masterPlayer.zones[this.activePlayer].members) {
         memberTemplates.push(html`
         <ha-card class="member unjoin-member" data-member="${member}">
@@ -579,9 +579,7 @@ export class SonosPlayerCard extends SonosCard {
         <div class="cover" style="background-image: ${ this.thumbnail };"></div>
         <nav>
           <div class="right">
-            <ha-icon-button  @click="${this._handleAction}">
-              <ha-icon .icon=${"mdi:tune-vertical"}></ha-icon>
-            </ha-icon-button>
+
           </div>
         </nav>
         <div>

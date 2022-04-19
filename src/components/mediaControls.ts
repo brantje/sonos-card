@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { classMap } from 'lit-html/directives/class-map';
 import { customElement, property, state } from "lit/decorators";
-
+import { handleAction } from "custom-card-helpers";
 import { ICON, REPEAT_STATE } from '../const';
 //import sharedStyle from '../sharedStyle';
 
@@ -99,6 +99,7 @@ class SonosPlayerMediaControls extends LitElement {
 
 
         const showVolumeLevel = !this.config.player.hide.volume_level;
+        const showConfigButton = !this.config.player.hide.player_config;
         return html`
         <div class=${classMap({ '--buttons' : this.config.player.volume_stateless, 'sonos-media-controls__volume' : true, flex:
                 true,
@@ -109,6 +110,8 @@ class SonosPlayerMediaControls extends LitElement {
                 <ha-icon .icon=${ICON.DROPDOWN}></ha-icon>
             </ha-icon-button>` : ''}
             ${showVolumeLevel ? this.renderVolLevel() : ''}
+
+
 
         </div> ${this.renderGroupVolume()}`;
     }
@@ -163,12 +166,25 @@ class SonosPlayerMediaControls extends LitElement {
                         <div>
                             ${volumeStr}%
                         </div>
+                        <div>
+                        ${this.renderConfigButton(member)}
+                        </div>
                         </div>
                     `)
                 }
             }
         }
         return html`<ha-card class="volume-group ${classMap({ show: this.showVolume }) }">${volumeTemplate}</ha-card>`;
+    }
+
+    renderConfigButton(player) {
+        return html `<ha-icon-button  @click="${() => this._handleAction(player)}"><ha-icon .icon=${"mdi:tune-vertical"}></ha-icon></ha-icon-button>`
+    }
+
+    _handleAction(e) {
+        handleAction(this, this.player.hass, {
+            entity: e,
+          }, 'action: more-info');
     }
 
     renderVolLevel() {
@@ -290,7 +306,7 @@ class SonosPlayerMediaControls extends LitElement {
         .volume-group{
             display: none;
             position: absolute;
-            min-width: 300px;
+            min-width: 320px;
             top: 40px;
             left: 0;
             z-index: 5;
